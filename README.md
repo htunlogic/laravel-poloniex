@@ -31,3 +31,25 @@ Optionally you can add alias to your `config/app.php`:
            
 ],
 ```
+
+Usage examples: 
+``` 
+use Htunlogic\Poloniex\Poloniex;
+```
+``` 
+Poloniex::getBalanceFor('BTC');
+Poloniex::getOpenOrders('BTC_XMR');
+Poloniex::getMyTradeHistory('BTC_XMR');
+Poloniex::buy('BTC_XMR', 0.013, 1, 'postOnly');
+Poloniex::sell('BTC_XMR', 0.013, 1, 'postOnly');
+Poloniex::cancelOrder('BTC_XMR', 123);
+Poloniex::withdraw('BTC', 1, '14PJdqimDkCqWCH1oXy4sVV6nwweqXYDjt');
+Poloniex::getTradeHistory('BTC_XMR');
+Poloniex::getOrderBook('BTC_XMR');
+Poloniex::getVolumeFor('BTC_XMR');
+Poloniex::getTradingPairs();
+Poloniex::getTicker("BTC_XMR");
+Poloniex::getBalances();
+Poloniex::getVolume();
+Poloniex::getTickers();
+```

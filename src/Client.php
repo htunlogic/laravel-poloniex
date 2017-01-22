@@ -1,10 +1,7 @@
 <?php
 namespace Htunlogic\Poloniex;
 
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
-
-class Client
+class Client implements ClientContract
 {
     /**
      * @var string
@@ -30,11 +27,12 @@ class Client
      * Client constructor.
      *
      * @param array $auth
+     * @param array $urls
      */
-    public function __construct(array $auth)
+    public function __construct(array $auth, array $urls)
     {
-        $this->tradingUrl = config('poloniex.trading_url');
-        $this->publicUrl = config('poloniex.public_url');
+        $this->tradingUrl = array_get($urls, 'trading');
+        $this->publicUrl = array_get($urls, 'public');
 
         $this->key = array_get($auth, 'key');
         $this->secret = array_get($auth, 'secret');
@@ -48,35 +46,19 @@ class Client
     public function getBalanceFor($currency)
     {
         return array_get(
-            $this->getBalances()->toArray(), strtoupper($currency)
+            $this->getBalances(), strtoupper($currency)
         );
-    }
-
-    /**
-     * Get my balances.
-     *
-     * @return Collection
-     */
-    public function getBalances()
-    {
-        $balances = new Collection($this->query([
-            'command' => 'returnBalances'
-        ]));
-
-        return $balances->map(function ($balance) {
-            return (float) $balance;
-        });
     }
 
     /**
      * Get my open orders.
      *
      * @param string $pair
-     * @return mixed
+     * @return array
      */
     public function getOpenOrders($pair)
     {
-        return $this->query([
+        return $this->trading([
             'command' => 'returnOpenOrders',
             'currencyPair' => strtoupper($pair)
         ]);
@@ -90,7 +72,7 @@ class Client
      */
     public function getMyTradeHistory($pair)
     {
-        return $this->query([
+        return $this->trading([
             'command' => 'returnTradeHistory',
             'currencyPair' => strtoupper($pair)
         ]);
@@ -133,7 +115,7 @@ class Client
      */
     public function cancelOrder($pair, $id)
     {
-        return $this->query([
+        return $this->trading([
             'command' => 'cancelOrder',
             'currencyPair' => strtoupper($pair),
             'orderNumber' => $id
@@ -150,7 +132,7 @@ class Client
      */
     public function withdraw($currency, $amount, $address)
     {
-        return $this->query([
+        return $this->trading([
             'command' => 'withdraw',
             'currency' => strtoupper($currency),
             'amount' => $amount,
@@ -165,11 +147,11 @@ class Client
      * @param string|null $start
      * @param string|null $end
      * @param string|null $period
-     * @return Collection
+     * @return array
      */
     public function getTradeHistory($pair, $start = null, $end = null, $period = null)
     {
-        return $this->retrieve(array_merge([
+        return $this->public(array_merge([
             'command' => 'returnTradeHistory',
             'currencyPair' => strtoupper($pair),
             'period' => $period
@@ -181,11 +163,11 @@ class Client
      *
      * @param string $pair
      * @param int    $depth
-     * @return Collection
+     * @return array
      */
     public function getOrderBook($pair, $depth = 10)
     {
-        return $this->retrieve([
+        return $this->public([
             'command' => 'returnOrderBook',
             'currencyPair' => strtoupper($pair),
             'depth' => $depth
@@ -196,76 +178,76 @@ class Client
      * Returns the trading volume.
      *
      * @param string $pair
-     * @return array
+     * @return array|null
      */
     public function getVolumeFor($pair)
     {
         $pair = strtoupper($pair);
 
-        return $this->getVolume()->first(function ($p, $key) use ($pair) {
-            return $key == $pair;
-        });
-    }
-
-    /**
-     * Returns the trading volume.
-     *
-     * @return Collection
-     */
-    public function getVolume()
-    {
-        return $this->retrieve([
-            'command' => 'return24hVolume'
-        ]);
+        return array_get($this->getVolume(), $pair);
     }
 
     /**
      * Get trading pairs.
      *
      * @return array
+     */
+    public function getTradingPairs()
+    {
+        return array_keys($this->public([
+            'command' => 'returnTicker'
+        ]));
+    }
+
+    /**
+     * Get trading pairs.
+     *
+     * @param string $pair
+     * @return array|null
      */
     public function getTicker($pair)
     {
         $pair = strtoupper($pair);
 
-        return $this->getTickers()->first(function ($ticker, $key) use ($pair) {
-            return $key == $pair;
-        });
+        return array_get($this->getTickers(), $pair);
     }
 
     /**
-     * Returning all pairs with their prices.
-     *
-     * @return Collection
+     * @inheritdoc
+     */
+    public function getBalances()
+    {
+        return array_map(function ($balance) {
+            return (float) $balance;
+        }, $this->trading([
+            'command' => 'returnBalances'
+        ]));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getVolume()
+    {
+        return $this->public([
+            'command' => 'return24hVolume'
+        ]);
+    }
+
+    /**
+     * @inheritdoc
      */
     public function getTickers()
     {
-        return $this->retrieve([
+        return $this->public([
             'command' => 'returnTicker'
         ]);
     }
 
     /**
-     * Get trading pairs.
-     *
-     * @return Collection
+     * @inheritdoc
      */
-    public function getTradingPairs()
-    {
-        return $this->retrieve([
-            'command' => 'returnTicker'
-        ])->keys();
-    }
-
-    /**
-     * Buy or sell action.
-     *
-     * @param $pair
-     * @param $rate
-     * @param $amount
-     * @return array
-     */
-    protected function buyOrSell($command, $pair, $rate, $amount, $type = null)
+    public function buyOrSell($command, $pair, $rate, $amount, $type = null)
     {
         $parameters = [
             'command' => $command,
@@ -284,26 +266,22 @@ class Client
             $parameters['postOnly'] = 1;
         }
 
-        return $this->query($parameters);
+        return $this->trading($parameters);
     }
 
     /**
-     * Format the dates into numeric timestamps.
-     *
-     * @param mixed $start
-     * @param mixed $end
-     * @return array
+     * @inheritdoc
      */
-    protected function formatDates($start = null, $end = null)
+    public function formatDates($start = null, $end = null)
     {
-        if ($start instanceof Carbon) {
+        if (is_object($start) && property_exists($start, 'timestamp')) {
             $start = $start->timestamp;
         }
         else if (! is_numeric($start) && ! is_null($start)) {
             $start = strtotime($start);
         }
 
-        if ($end instanceof Carbon) {
+        if (is_object($end) && property_exists($end, 'timestamp')) {
             $end = $end->timestamp;
         }
         else if (! is_numeric($end) && ! is_null($start)) {
@@ -317,12 +295,9 @@ class Client
     }
 
     /**
-     * Make request on public API.
-     *
-     * @param array $parameters
-     * @return Collection
+     * @inheritdoc
      */
-    private function retrieve(array $parameters)
+    public function public(array $parameters)
     {
         $options = [
             'http' => [
@@ -337,18 +312,13 @@ class Client
             $url, false, stream_context_create($options)
         );
 
-        return new Collection(
-            json_decode($feed, true)
-        );
+        return json_decode($feed, true);
     }
 
     /**
-     * Query the trading Api
-     *
-     * @param array $parameters
-     * @return mixed
+     * @inheritdoc
      */
-    private function query(array $parameters = [])
+    public function trading(array $parameters = [])
     {
         $mt = explode(' ', microtime());
         $parameters['nonce'] = $mt[1].substr($mt[0], 2, 6);

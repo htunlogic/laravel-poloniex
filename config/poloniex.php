@@ -17,17 +17,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Trading URL
+    | Api URLS
     |--------------------------------------------------------------------------
+    |
+    | Urls for Poloniex public and trading API
+    |
     */
 
-    'trading_url' => 'https://poloniex.com/tradingApi',
+    'urls' => [
+        'trading' => 'https://poloniex.com/tradingApi',
+        'public' => 'https://poloniex.com/public',
+    ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Public URL
-    |--------------------------------------------------------------------------
-    */
-
-    'public_url' => 'https://poloniex.com/public',
 ];

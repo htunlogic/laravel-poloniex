@@ -284,7 +284,7 @@ class Client implements ClientContract
         if (is_object($end) && property_exists($end, 'timestamp')) {
             $end = $end->timestamp;
         }
-        else if (! is_numeric($end) && ! is_null($start)) {
+        else if (! is_numeric($end) && ! is_null($end)) {
             $end = strtotime($end);
         }
 

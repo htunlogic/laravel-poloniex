@@ -320,8 +320,8 @@ class Client implements ClientContract
      */
     public function trading(array $parameters = [])
     {
-        $mt = (string) microtime(true);
-        $parameters['nonce'] = intval(substr(str_replace('.', '', $mt), 0, 13));
+        $mt = explode(' ', microtime());
+        $parameters['nonce'] = $mt[1].substr($mt[0], 2, 6);
 
         $post = http_build_query(array_filter($parameters), '', '&');
         $sign = hash_hmac('sha512', $post, $this->secret);

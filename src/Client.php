@@ -70,7 +70,7 @@ class Client implements ClientContract
      * @param string $pair
      * @return mixed
      */
-    public function getMyTradeHistory($pair, $extraOptions)
+    public function getMyTradeHistory($pair, $extraOptions=[])
     {
         $options = [
             'command' => 'returnTradeHistory',
